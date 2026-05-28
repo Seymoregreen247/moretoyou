@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>More To You</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--sg-green:#4BBB2A;--sg-dark:#1e1e1e;--sg-gray:#B6B6B6;--sg-white:#FFFFFF;--sg-surface:#242424;--sg-card:#2c2c2c;--sg-border:rgba(75,187,42,0.18);--sg-muted:#888;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--sg-dark);color:var(--sg-white);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--sg-green);line-height:1;}
+.logo span{color:var(--sg-white);}
+.header-actions{display:flex;gap:8px;}
+.btn-icon{background:transparent;border:1px solid var(--sg-border);color:var(--sg-gray);width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.btn-icon:hover{border-color:var(--sg-green);color:var(--sg-green);}
+.btn-icon.sheets-connected{border-color:var(--sg-green);color:var(--sg-green);}
+
+.search-wrap{padding:1rem 1.25rem 0.5rem;position:relative;}
+.search-wrap input{width:100%;background:var(--sg-surface);border:1px solid var(--sg-border);border-radius:30px;padding:0.65rem 1rem 0.65rem 2.75rem;color:var(--sg-white);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;}
+.search-wrap input:focus{border-color:var(--sg-green);}
+.search-icon{position:absolute;left:2rem;top:50%;transform:translateY(-50%);color:var(--sg-muted);font-size:16px;pointer-events:none;}
+
+.tabs{display:flex;padding:0.75rem 1.25rem 0;gap:6px;}
+.tab{flex:1;background:var(--sg-surface);border:1px solid var(--sg-border);border-radius:24px;color:var(--sg-gray);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:0.45rem 0;cursor:pointer;transition:all 0.2s;text-align:center;}
+.tab.active{background:var(--sg-green);border-color:var(--sg-green);color:var(--sg-dark);font-weight:600;}
+
+/* SHEETS SYNC BAR */
+.sync-bar{margin:0.75rem 1.25rem 0;background:var(--sg-surface);border:1px solid var(--sg-border);border-radius:12px;padding:0.65rem 1rem;display:none;align-items:center;justify-content:space-between;gap:8px;}
+.sync-bar.visible{display:flex;}
+.sync-status{font-size:12px;color:var(--sg-muted);flex:1;}
+.sync-status span{color:var(--sg-green);font-weight:600;}
+.sync-btns{display:flex;gap:6px;}
+.sync-btn{background:transparent;border:1px solid var(--sg-border);border-radius:20px;color:var(--sg-gray);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;padding:0.3rem 0.7rem;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;gap:4px;}
+.sync-btn:hover{border-color:var(--sg-green);color:var(--sg-green);}
+.sync-btn.push:hover{border-color:#4ade80;color:#4ade80;}
+.sync-btn.pull:hover{border-color:#60a5fa;color:#60a5fa;}
+.sync-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.spin{display:inline-block;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.contacts-list{padding:0.75rem 1.25rem 6rem;}
+.section-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--sg-green);padding:0.75rem 0 0.4rem;}
+
+.contact-card{background:var(--sg-card);border:1px solid var(--sg-border);border-radius:14px;padding:0.85rem 1rem;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:border-color 0.2s;cursor:pointer;}
+.contact-card:hover{border-color:rgba(75,187,42,0.4);}
+.avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--sg-green),#2d7a18);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--sg-dark);flex-shrink:0;}
+.contact-info{flex:1;min-width:0;}
+.contact-name{font-weight:600;font-size:15px;color:var(--sg-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact-sub{font-size:12px;color:var(--sg-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact-actions{display:flex;gap:6px;}
+.action-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--sg-border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.18s;text-decoration:none;}
+.action-btn.sms{color:var(--sg-green);}
+.action-btn.sms:hover{background:var(--sg-green);color:var(--sg-dark);border-color:var(--sg-green);}
+.action-btn.email{color:#60a5fa;}
+.action-btn.email:hover{background:#60a5fa;color:var(--sg-dark);border-color:#60a5fa;}
+.action-btn.del{color:#ef4444;}
+.action-btn.del:hover{background:#ef4444;color:var(--sg-white);border-color:#ef4444;}
+
+.fab{position:fixed;bottom:1.5rem;right:1.5rem;width:58px;height:58px;border-radius:50%;background:var(--sg-green);border:none;color:var(--sg-dark);font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(75,187,42,0.35);transition:transform 0.2s;z-index:200;}
+.fab:hover{transform:scale(1.08);}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:300;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--sg-card);border-radius:24px 24px 0 0;border:1px solid var(--sg-border);border-bottom:none;width:100%;max-width:520px;padding:1.5rem 1.25rem 2rem;animation:slideUp 0.28s ease;max-height:90vh;overflow-y:auto;}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.modal-handle{width:36px;height:4px;background:var(--sg-border);border-radius:2px;margin:0 auto 1.25rem;}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--sg-green);margin-bottom:1.25rem;}
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-size:11px;font-weight:600;letter-spacing:1.5px;color:var(--sg-muted);text-transform:uppercase;margin-bottom:0.4rem;}
+.form-group input,.form-group textarea,.form-group select{width:100%;background:var(--sg-surface);border:1px solid var(--sg-border);border-radius:10px;padding:0.65rem 0.9rem;color:var(--sg-white);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;resize:none;transition:border-color 0.2s;}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{border-color:var(--sg-green);}
+.form-group select option{background:var(--sg-card);}
+.modal-btns{display:flex;gap:8px;margin-top:1.25rem;}
+.btn-cancel{flex:1;background:transparent;border:1px solid var(--sg-border);border-radius:30px;color:var(--sg-gray);padding:0.7rem;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.18s;}
+.btn-cancel:hover{border-color:var(--sg-gray);color:var(--sg-white);}
+.btn-save{flex:2;background:var(--sg-green);border:none;border-radius:30px;color:var(--sg-dark);padding:0.7rem;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.18s;}
+.btn-save:hover{opacity:0.88;}
+
+.compose-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:400;align-items:flex-end;justify-content:center;}
+.compose-overlay.open{display:flex;}
+
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--sg-muted);}
+.empty-icon{font-size:48px;margin-bottom:1rem;opacity:0.3;}
+.empty-msg{font-size:15px;}
+
+.count-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--sg-green);color:var(--sg-dark);font-size:10px;font-weight:700;border-radius:20px;padding:1px 7px;margin-left:6px;}
+
+.type-toggle{display:flex;background:var(--sg-surface);border-radius:30px;padding:3px;margin-bottom:1.25rem;}
+.type-btn{flex:1;border:none;border-radius:24px;background:transparent;color:var(--sg-gray);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:0.45rem 0;cursor:pointer;transition:all 0.2s;text-align:center;}
+.type-btn.active{background:var(--sg-green);color:var(--sg-dark);font-weight:700;}
+
+.btn-send{width:100%;background:var(--sg-green);border:none;border-radius:30px;color:var(--sg-dark);padding:0.85rem;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;transition:opacity 0.18s;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;margin-top:1rem;}
+.btn-send:hover{opacity:0.88;}
+
+/* SETTINGS */
+.settings-section{margin-bottom:1.25rem;}
+.settings-section-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--sg-green);margin-bottom:0.75rem;padding-bottom:0.4rem;border-bottom:1px solid var(--sg-border);}
+.settings-hint{font-size:12px;color:var(--sg-muted);margin-top:0.4rem;line-height:1.5;}
+.settings-hint a{color:var(--sg-green);text-decoration:none;}
+.conn-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;margin-top:0.5rem;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--sg-muted);}
+.conn-dot.connected{background:var(--sg-green);}
+.conn-dot.error{background:#ef4444;}
+.btn-test{background:transparent;border:1px solid var(--sg-border);border-radius:20px;color:var(--sg-gray);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:0.35rem 0.85rem;cursor:pointer;transition:all 0.18s;margin-top:0.6rem;}
+.btn-test:hover{border-color:var(--sg-green);color:var(--sg-green);}
+
+.toast{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);background:var(--sg-card);border:1px solid var(--sg-border);border-radius:30px;padding:0.6rem 1.2rem;font-size:13px;font-weight:500;color:var(--sg-white);z-index:999;opacity:0;transition:opacity 0.3s;white-space:nowrap;pointer-events:none;}
+.toast.show{opacity:1;}
+.toast.success{border-color:var(--sg-green);color:var(--sg-green);}
+.toast.error{border-color:#ef4444;color:#ef4444;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">MORE<span>TO</span>YOU</div>
+  <div class="header-actions">
+    <button class="btn-icon" id="sheetsBtn" onclick="openSettings()" title="Google Sheets">📊</button>
+    <button class="btn-icon" onclick="openCompose()" title="Quick message">✉️</button>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <span class="search-icon">🔍</span>
+  <input type="text" id="searchInput" placeholder="Search contacts..." oninput="renderContacts()">
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="setTab('all',this)">All <span class="count-badge" id="allCount">0</span></button>
+  <button class="tab" onclick="setTab('sms',this)">📱 SMS</button>
+  <button class="tab" onclick="setTab('email',this)">✉️ Email</button>
+</div>
+
+<div class="sync-bar" id="syncBar">
+  <div class="sync-status">Sheets: <span id="syncStatusText">Connected</span></div>
+  <div class="sync-btns">
+    <button class="sync-btn push" id="pushBtn" onclick="pushToSheets()" title="Push contacts to Google Sheets">⬆ Push</button>
+    <button class="sync-btn pull" id="pullBtn" onclick="pullFromSheets()" title="Pull contacts from Google Sheets">⬇ Pull</button>
+  </div>
+</div>
+
+<div class="contacts-list" id="contactsList"></div>
+<button class="fab" onclick="openAdd()" title="Add contact">+</button>
+<div class="toast" id="toast"></div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">NEW CONTACT</div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="fName" placeholder="e.g. Marcus Williams"></div>
+    <div class="form-group"><label>Phone Number</label><input type="tel" id="fPhone" placeholder="(617) 555-0100"></div>
+    <div class="form-group"><label>Email Address</label><input type="email" id="fEmail" placeholder="email@example.com"></div>
+    <div class="form-group"><label>Group / Tag</label><input type="text" id="fGroup" placeholder="e.g. Customer, Team, School..."></div>
+    <div class="form-group"><label>Notes</label><textarea id="fNotes" rows="2" placeholder="Optional notes..."></textarea></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveContact()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPOSE MODAL -->
+<div class="compose-overlay" id="composeModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="composeTitle">SEND MESSAGE</div>
+    <div class="type-toggle" id="typeToggle">
+      <button class="type-btn active" onclick="setComposeType('sms',this)">📱 Text / SMS</button>
+      <button class="type-btn" onclick="setComposeType('email',this)">✉️ Email</button>
+    </div>
+    <div class="form-group"><label>To</label><input type="text" id="cTo" placeholder="Name, number, or email..."></div>
+    <div id="subjectGroup" class="form-group" style="display:none;"><label>Subject</label><input type="text" id="cSubject" placeholder="Message subject"></div>
+    <div class="form-group"><label>Message</label><textarea id="cMessage" rows="5" placeholder="Type your message here..."></textarea></div>
+    <a id="sendLink" href="#" class="btn-send" onclick="return handleSend()">
+      <span id="sendIcon">📱</span><span id="sendLabel">OPEN IN MESSAGES</span>
+    </a>
+    <div class="modal-btns" style="margin-top:0.5rem;">
+      <button class="btn-cancel" onclick="closeCompose()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">GOOGLE SHEETS SETUP</div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Apps Script Web App URL</div>
+      <div class="form-group">
+        <label>Paste your deployed Web App URL</label>
+        <input type="url" id="sWebAppUrl" placeholder="https://script.google.com/macros/s/YOUR_ID/exec">
+        <div class="settings-hint">
+          Deploy the Apps Script as a Web App, then paste the URL above.<br>
+          Access: <strong>Anyone</strong> &nbsp;·&nbsp; Execute as: <strong>Me</strong>
+        </div>
+      </div>
+      <div class="conn-status" id="connStatus">
+        <div class="conn-dot" id="connDot"></div>
+        <span id="connLabel">Not configured</span>
+      </div><br>
+      <button class="btn-test" onclick="testConnection()">Test Connection</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Sheet Name</div>
+      <div class="form-group">
+        <label>Tab name in your Google Sheet</label>
+        <input type="text" id="sSheetName" placeholder="Contacts" value="Contacts">
+        <div class="settings-hint">Must match exactly. Default: <strong>Contacts</strong></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Sync Behavior</div>
+      <div class="form-group">
+        <label>When pulling from Sheets</label>
+        <select id="sPullMode">
+          <option value="merge">Merge (keep local + add new from sheet)</option>
+          <option value="replace">Replace (overwrite local with sheet data)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Apps Script Code</div>
+      <div class="settings-hint" style="margin-bottom:0.5rem;">
+        Go to <a href="https://script.google.com" target="_blank">script.google.com</a> → New Project → paste the code from <strong>more-to-you-script.gs</strong> → Deploy → Web App.
+      </div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeSettings()">Close</button>
+      <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let contacts = JSON.parse(localStorage.getItem('mty_contacts')||'[]');
+let editIdx = -1;
+let activeTab = 'all';
+let composeType = 'sms';
+const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw1H9gfd7TEReML7Q_rND3ddEGjFXTs4IS6gOwuMyRilRm1PJHX7Y347ofXaMPQpmAblw/exec';
+let settings = JSON.parse(localStorage.getItem('mty_settings')||'{}');
+if(!settings.webAppUrl) settings.webAppUrl = DEFAULT_WEBAPP_URL;
+
+function saveLocal(){localStorage.setItem('mty_contacts',JSON.stringify(contacts));}
+function saveSettings2(){localStorage.setItem('mty_settings',JSON.stringify(settings));}
+function initials(n){return n.trim().split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function cleanPhone(p){return p.replace(/\D/g,'');}
+
+// TOAST
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show '+(type==='error'?'error':'success');
+  setTimeout(()=>t.className='toast',2800);
+}
+
+// SYNC BAR
+function updateSyncBar(){
+  const bar=document.getElementById('syncBar');
+  const btn=document.getElementById('sheetsBtn');
+  if(settings.webAppUrl){
+    bar.classList.add('visible');
+    btn.classList.add('sheets-connected');
+    document.getElementById('syncStatusText').textContent='Connected';
+  } else {
+    bar.classList.remove('visible');
+    btn.classList.remove('sheets-connected');
+  }
+}
+
+// TABS
+function setTab(tab,btn){
+  activeTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderContacts();
+}
+
+// RENDER
+function renderContacts(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  let list=contacts.filter(c=>{
+    const match=c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.group||'').toLowerCase().includes(q);
+    if(!match)return false;
+    if(activeTab==='sms')return!!c.phone;
+    if(activeTab==='email')return!!c.email;
+    return true;
+  });
+  document.getElementById('allCount').textContent=contacts.length;
+  const container=document.getElementById('contactsList');
+  if(list.length===0){
+    container.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-msg">No contacts yet.<br>Hit + to add someone.</div></div>`;
+    return;
+  }
+  const grouped={};
+  list.forEach(c=>{const l=c.name[0].toUpperCase();if(!grouped[l])grouped[l]=[];grouped[l].push(c);});
+  let html='';
+  Object.keys(grouped).sort().forEach(letter=>{
+    html+=`<div class="section-label">${letter}</div>`;
+    grouped[letter].forEach(c=>{
+      const idx=contacts.indexOf(c);
+      const sub=[c.group,c.phone,c.email].filter(Boolean).join(' · ');
+      const smsBtn=c.phone
+        ?`<button class="action-btn sms" onclick="event.stopPropagation();openComposeTo(${idx},'sms')" title="Send SMS">💬</button>`
+        :`<button class="action-btn sms" style="opacity:0.2;cursor:default">💬</button>`;
+      const emailBtn=c.email
+        ?`<button class="action-btn email" onclick="event.stopPropagation();openComposeTo(${idx},'email')" title="Send Email">✉️</button>`
+        :`<button class="action-btn email" style="opacity:0.2;cursor:default">✉️</button>`;
+      html+=`<div class="contact-card" onclick="openEdit(${idx})">
+        <div class="avatar">${initials(c.name)}</div>
+        <div class="contact-info"><div class="contact-name">${c.name}</div><div class="contact-sub">${sub||'No details'}</div></div>
+        <div class="contact-actions">${smsBtn}${emailBtn}
+          <button class="action-btn del" onclick="event.stopPropagation();deleteContact(${idx})" title="Delete">🗑</button>
+        </div></div>`;
+    });
+  });
+  container.innerHTML=html;
+}
+
+// ADD/EDIT
+function openAdd(){
+  editIdx=-1;
+  document.getElementById('modalTitle').textContent='NEW CONTACT';
+  ['fName','fPhone','fEmail','fGroup','fNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('addModal').classList.add('open');
+}
+function openEdit(idx){
+  editIdx=idx;const c=contacts[idx];
+  document.getElementById('modalTitle').textContent='EDIT CONTACT';
+  document.getElementById('fName').value=c.name;
+  document.getElementById('fPhone').value=c.phone||'';
+  document.getElementById('fEmail').value=c.email||'';
+  document.getElementById('fGroup').value=c.group||'';
+  document.getElementById('fNotes').value=c.notes||'';
+  document.getElementById('addModal').classList.add('open');
+}
+function closeModal(){document.getElementById('addModal').classList.remove('open');}
+function saveContact(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){alert('Name is required.');return;}
+  const c={name,phone:document.getElementById('fPhone').value.trim(),email:document.getElementById('fEmail').value.trim(),group:document.getElementById('fGroup').value.trim(),notes:document.getElementById('fNotes').value.trim(),updatedAt:new Date().toISOString()};
+  if(editIdx>=0){contacts[editIdx]=c;}else{contacts.push(c);}
+  saveLocal();closeModal();renderContacts();
+}
+function deleteContact(idx){
+  if(!confirm(`Remove ${contacts[idx].name}?`))return;
+  contacts.splice(idx,1);saveLocal();renderContacts();
+}
+
+// COMPOSE
+let _cc=null;
+function openCompose(){
+  _cc=null;
+  document.getElementById('composeTitle').textContent='SEND MESSAGE';
+  document.getElementById('cTo').value='';document.getElementById('cMessage').value='';document.getElementById('cSubject').value='';
+  setComposeType('sms',document.querySelector('.type-btn'));
+  document.getElementById('composeModal').classList.add('open');
+}
+function openComposeTo(idx,type){
+  _cc=contacts[idx];
+  document.getElementById('composeTitle').textContent='MESSAGE '+_cc.name.toUpperCase();
+  document.getElementById('cMessage').value='';document.getElementById('cSubject').value='';
+  const btns=document.querySelectorAll('.type-btn');
+  if(type==='sms'){document.getElementById('cTo').value=_cc.phone||'';setComposeType('sms',btns[0]);}
+  else{document.getElementById('cTo').value=_cc.email||'';setComposeType('email',btns[1]);}
+  document.getElementById('composeModal').classList.add('open');
+}
+function setComposeType(type,btn){
+  composeType=type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  const sub=document.getElementById('subjectGroup');
+  if(type==='email'){sub.style.display='block';document.getElementById('sendIcon').textContent='✉️';document.getElementById('sendLabel').textContent='OPEN IN EMAIL';if(_cc&&_cc.email)document.getElementById('cTo').value=_cc.email;}
+  else{sub.style.display='none';document.getElementById('sendIcon').textContent='📱';document.getElementById('sendLabel').textContent='OPEN IN MESSAGES';if(_cc&&_cc.phone)document.getElementById('cTo').value=_cc.phone;}
+}
+function handleSend(){
+  const to=document.getElementById('cTo').value.trim();
+  const msg=document.getElementById('cMessage').value.trim();
+  const subject=document.getElementById('cSubject').value.trim();
+  if(!to){alert('Enter a recipient first.');return false;}
+  if(composeType==='sms'){let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;}
+  else{let url=`mailto:${encodeURIComponent(to)}`;const p=[];if(subject)p.push(`subject=${encodeURIComponent(subject)}`);if(msg)p.push(`body=${encodeURIComponent(msg)}`);if(p.length)url+='?'+p.join('&');window.location.href=url;}
+  closeCompose();return false;
+}
+function closeCompose(){document.getElementById('composeModal').classList.remove('open');}
+
+// SETTINGS
+function openSettings(){
+  document.getElementById('sWebAppUrl').value=settings.webAppUrl||'';
+  document.getElementById('sSheetName').value=settings.sheetName||'Contacts';
+  document.getElementById('sPullMode').value=settings.pullMode||'merge';
+  updateConnStatus(settings.webAppUrl?'connected':'idle');
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('open');}
+function saveSettings(){
+  settings.webAppUrl=document.getElementById('sWebAppUrl').value.trim();
+  settings.sheetName=document.getElementById('sSheetName').value.trim()||'Contacts';
+  settings.pullMode=document.getElementById('sPullMode').value;
+  saveSettings2();updateSyncBar();closeSettings();
+  showToast('Settings saved ✓');
+}
+function updateConnStatus(state){
+  const dot=document.getElementById('connDot');const label=document.getElementById('connLabel');
+  if(state==='connected'){dot.className='conn-dot connected';label.textContent='Connected';}
+  else if(state==='error'){dot.className='conn-dot error';label.textContent='Connection failed';}
+  else{dot.className='conn-dot';label.textContent='Not configured';}
+}
+async function testConnection(){
+  const url=document.getElementById('sWebAppUrl').value.trim();
+  if(!url){alert('Paste your Web App URL first.');return;}
+  updateConnStatus('idle');
+  try{
+    const r=await fetch(url+'?action=ping',{method:'GET'});
+    if(r.ok){const d=await r.json();if(d.status==='ok'){updateConnStatus('connected');showToast('Connected to Google Sheets ✓');}else{updateConnStatus('error');showToast('Unexpected response','error');}}
+    else{updateConnStatus('error');showToast('Connection failed','error');}
+  }catch(e){updateConnStatus('error');showToast('Connection failed — check URL & deployment','error');}
+}
+
+// GOOGLE SHEETS SYNC
+async function pushToSheets(){
+  if(!settings.webAppUrl){openSettings();return;}
+  const btn=document.getElementById('pushBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spin">↻</span> Pushing...';
+  try{
+    const body={action:'push',sheetName:settings.sheetName||'Contacts',contacts:contacts};
+    const r=await fetch(settings.webAppUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.status==='ok'){showToast(`✓ ${contacts.length} contacts pushed to Sheets`);}
+    else{showToast('Push failed: '+(d.message||'unknown error'),'error');}
+  }catch(e){showToast('Push failed — check connection','error');}
+  btn.disabled=false;btn.innerHTML='⬆ Push';
+}
+
+async function pullFromSheets(){
+  if(!settings.webAppUrl){openSettings();return;}
+  const btn=document.getElementById('pullBtn');
+  btn.disabled=true;btn.innerHTML='<span class="spin">↻</span> Pulling...';
+  try{
+    const r=await fetch(settings.webAppUrl+'?action=pull&sheetName='+encodeURIComponent(settings.sheetName||'Contacts'));
+    const d=await r.json();
+    if(d.status==='ok'&&Array.isArray(d.contacts)){
+      if(settings.pullMode==='replace'){
+        contacts=d.contacts;
+      } else {
+        const existing=new Set(contacts.map(c=>c.name.toLowerCase().trim()));
+        d.contacts.forEach(c=>{if(!existing.has(c.name.toLowerCase().trim()))contacts.push(c);});
+      }
+      saveLocal();renderContacts();
+      showToast(`✓ ${d.contacts.length} contacts pulled from Sheets`);
+    }else{showToast('Pull failed: '+(d.message||'unknown error'),'error');}
+  }catch(e){showToast('Pull failed — check connection','error');}
+  btn.disabled=false;btn.innerHTML='⬇ Pull';
+}
+
+// CLOSE ON BACKDROP
+['addModal','composeModal','settingsModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+});
+
+// DEMO DATA
+if(contacts.length===0){
+  contacts=[
+    {name:'Rozzie Faithful',phone:'6175550101',email:'rozzie@example.com',group:'Customer',notes:'',updatedAt:''},
+    {name:'Marcus W.',phone:'6175550188',email:'',group:'Team',notes:'',updatedAt:''},
+    {name:'JP Coop',phone:'',email:'jp@example.com',group:'Wholesale',notes:'',updatedAt:''},
+  ];
+  saveLocal();
+}
+
+updateSyncBar();
+renderContacts();
+</script>
+</body>
+</html>

@@ -7,10 +7,10 @@
 <meta name="description" content="MoneyBlast — Seymore Green's all-in-one SMS + email marketing hub: contacts, promo gallery, daily blast templates, and Google Sheets sync.">
 <meta name="theme-color" content="#1e1e1e">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/x-icon" href="icons/favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--sg-green:#4BBB2A;--sg-dark:#1e1e1e;--sg-gray:#B6B6B6;--sg-white:#FFFFFF;--sg-surface:#242424;--sg-card:#2c2c2c;--sg-border:rgba(75,187,42,0.18);--sg-muted:#888;}
@@ -65,10 +65,12 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 .contact-info{flex:1;min-width:0;}
 .contact-name{font-weight:600;font-size:15px;color:var(--sg-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .contact-sub{font-size:12px;color:var(--sg-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.contact-actions{display:flex;gap:6px;}
+.contact-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;max-width:190px;}
 .action-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--sg-border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.18s;text-decoration:none;}
 .action-btn.sms{color:var(--sg-green);}
 .action-btn.sms:hover{background:var(--sg-green);color:var(--sg-dark);border-color:var(--sg-green);}
+.action-btn.call{color:#2dd4bf;}
+.action-btn.call:hover{background:#2dd4bf;color:var(--sg-dark);border-color:#2dd4bf;}
 .action-btn.email{color:#60a5fa;}
 .action-btn.email:hover{background:#60a5fa;color:var(--sg-dark);border-color:#60a5fa;}
 .action-btn.del{color:#ef4444;}
@@ -774,6 +776,9 @@ function renderContacts(){
       const ageBadge=needsAge?(c.ageVerified?`<span class="consent-badge yes">21+ ✓</span>`:`<span class="consent-badge no">Age not verified</span>`):'';
       const respBadge=c.responseCount?`<span class="tag-chip-mini" style="background:rgba(240,180,41,0.15);color:#f0b429;">⚡ ${c.responseCount} repl${c.responseCount===1?'y':'ies'}</span>`:'';
       const tagsHtml=(c.tags&&c.tags.length||respBadge)?`<div>${(c.tags||[]).map(t=>`<span class="tag-chip-mini">${t}</span>`).join('')}${respBadge}</div>`:'';
+      const callBtn=c.phone
+        ?`<button class="action-btn call" onclick="event.stopPropagation();callContact(${idx})" title="Call">📞</button>`
+        :`<button class="action-btn call" style="opacity:0.2;cursor:default">📞</button>`;
       const smsBtn=c.phone
         ?`<button class="action-btn sms" onclick="event.stopPropagation();openComposeTo(${idx},'sms')" title="${c.consent?'Send SMS':'No SMS consent on file — click to confirm before sending'}">💬</button>`
         :`<button class="action-btn sms" style="opacity:0.2;cursor:default">💬</button>`;
@@ -789,7 +794,7 @@ function renderContacts(){
         ${checkbox}
         <div class="avatar">${initials(c.name)}</div>
         <div class="contact-info"><div class="contact-name">${c.name}</div><div class="contact-sub">${sub||'No details'}</div>${(consentBadge||ageBadge)?`<div style="margin-top:4px;">${consentBadge}${ageBadge}</div>`:''}${tagsHtml}</div>
-        ${selectMode?'':`<div class="contact-actions">${smsBtn}${emailBtn}
+        ${selectMode?'':`<div class="contact-actions">${callBtn}${smsBtn}${emailBtn}
           <button class="action-btn zap" onclick="event.stopPropagation();logResponse(${idx})" title="Log a response from this contact">⚡</button>
           ${optOutBtn}
           <button class="action-btn del" onclick="event.stopPropagation();deleteContact(${idx})" title="Delete">🗑</button>
@@ -857,6 +862,11 @@ function saveContact(){
 function deleteContact(idx){
   if(!confirm(`Remove ${contacts[idx].name}?`))return;
   contacts.splice(idx,1);saveLocal();renderContacts();renderTagChips();
+}
+function callContact(idx){
+  const c=contacts[idx];
+  if(!c.phone){ showToast('No phone number on file','error'); return; }
+  window.location.href=`tel:${c.phone}`;
 }
 
 // QUICK RESPONDER TRACKING

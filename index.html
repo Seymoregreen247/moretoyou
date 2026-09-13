@@ -63,7 +63,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 .sel-check{width:20px;height:20px;flex-shrink:0;accent-color:var(--sg-green);}
 .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--sg-green),#2d7a18);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--sg-dark);flex-shrink:0;}
 .contact-info{flex:1;min-width:0;}
-.contact-name{font-weight:600;font-size:15px;color:var(--sg-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.contact-name{font-weight:600;font-size:15px;color:var(--sg-white);white-space:normal;overflow-wrap:break-word;line-height:1.25;}
 .contact-sub{font-size:12px;color:var(--sg-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .contact-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;max-width:190px;}
 .action-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--sg-border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.18s;text-decoration:none;}
@@ -234,6 +234,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     <div class="form-group"><label>Phone Number</label><input type="tel" id="fPhone" placeholder="(617) 555-0100"></div>
     <div class="form-group"><label>Email Address</label><input type="email" id="fEmail" placeholder="email@example.com"></div>
     <div class="form-group"><label>Group / Tag (free text)</label><input type="text" id="fGroup" placeholder="e.g. Customer, Team, or a business name like Tony's Pizza..."></div>
+    <div class="form-group"><label>Total Spent (optional)</label><input type="number" id="fSpend" min="0" step="0.01" placeholder="e.g. 245"></div>
     <div class="form-group">
       <label>Quick Tags</label>
       <div class="chip-row" style="padding:0;" id="fTagChips"></div>
@@ -3210,10 +3211,11 @@ function renderContacts(){
         :'';
       const checkbox=selectMode?`<input type="checkbox" class="sel-check" ${selectedIds.has(c.id)?'checked':''} onclick="event.stopPropagation();toggleSelect('${c.id}')">`:'';
       const cardClick=selectMode?`toggleSelect('${c.id}')`:`openEdit(${idx})`;
+      const spendBadge=c.spend?`<span class="tag-chip-mini" style="background:rgba(75,187,42,0.15);color:var(--sg-green);font-weight:700;">$${c.spend.toLocaleString(undefined,{minimumFractionDigits:c.spend%1?2:0,maximumFractionDigits:2})}</span>`:'';
       html+=`<div class="contact-card" onclick="${cardClick}">
         ${checkbox}
         <div class="avatar">${initials(c.name)}</div>
-        <div class="contact-info"><div class="contact-name">${c.name}</div><div class="contact-sub">${sub||'No details'}</div>${(consentBadge||ageBadge)?`<div style="margin-top:4px;">${consentBadge}${ageBadge}</div>`:''}${tagsHtml}</div>
+        <div class="contact-info"><div class="contact-name">${c.name}${spendBadge?` ${spendBadge}`:''}</div><div class="contact-sub">${sub||'No details'}</div>${(consentBadge||ageBadge)?`<div style="margin-top:4px;">${consentBadge}${ageBadge}</div>`:''}${tagsHtml}</div>
         ${selectMode?'':`<div class="contact-actions">${callBtn}${smsBtn}${emailBtn}
           <button class="action-btn zap" onclick="event.stopPropagation();logResponse(${idx})" title="Log a response from this contact">⚡</button>
           ${optOutBtn}
@@ -3237,7 +3239,7 @@ function toggleFTag(el,tag){
 function openAdd(){
   editIdx=-1;
   document.getElementById('modalTitle').textContent='NEW CONTACT';
-  ['fName','fPhone','fEmail','fGroup','fNotes'].forEach(id=>document.getElementById(id).value='');
+  ['fName','fPhone','fEmail','fGroup','fNotes','fSpend'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fConsent').checked=false;
   document.getElementById('fAgeVerified').checked=false;
   document.getElementById('fFrequency').value='any';
@@ -3252,6 +3254,7 @@ function openEdit(idx){
   document.getElementById('fPhone').value=c.phone||'';
   document.getElementById('fEmail').value=c.email||'';
   document.getElementById('fGroup').value=c.group||'';
+  document.getElementById('fSpend').value=c.spend?c.spend:'';
   document.getElementById('fNotes').value=c.notes||'';
   document.getElementById('fConsent').checked=!!c.consent;
   document.getElementById('fAgeVerified').checked=!!c.ageVerified;
@@ -3270,6 +3273,7 @@ function saveContact(){
     phone:document.getElementById('fPhone').value.trim(),
     email:document.getElementById('fEmail').value.trim(),
     group:document.getElementById('fGroup').value.trim(),
+    spend:parseFloat(document.getElementById('fSpend').value)||0,
     tags:_fTags.slice(),
     consent:document.getElementById('fConsent').checked,
     ageVerified:document.getElementById('fAgeVerified').checked,
@@ -3495,7 +3499,8 @@ function handleCSVFile(e){
       name: header.findIndex(h=>['name','full name','contact','contact name'].includes(h)),
       phone: header.findIndex(h=>['phone','number','cell','mobile','phone number'].includes(h)),
       email: header.findIndex(h=>['email','e-mail','email address'].includes(h)),
-      group: header.findIndex(h=>['group','tag','category'].includes(h))
+      group: header.findIndex(h=>['group','tag','category'].includes(h)),
+      spend: header.findIndex(h=>['spend','lifetime spend','lifetimespend','total spent','total spend'].includes(h))
     };
     if(idx.name===-1){ showToast('No "Name" column found in that CSV','error'); _csvPreview=[]; document.getElementById('csvConfirmBtn').disabled=true; return; }
     _csvPreview = rows.slice(1)
@@ -3504,7 +3509,8 @@ function handleCSVFile(e){
         name:r[idx.name].trim(),
         phone: idx.phone>-1?cleanPhone(r[idx.phone]||''):'',
         email: idx.email>-1?(r[idx.email]||'').trim():'',
-        group: idx.group>-1?(r[idx.group]||'').trim():''
+        group: idx.group>-1?(r[idx.group]||'').trim():'',
+        spend: idx.spend>-1?(parseFloat((r[idx.spend]||'').replace(/[^0-9.]/g,''))||0):0
       }));
     document.getElementById('csvPreviewCount').textContent = _csvPreview.length+' contact(s) found and ready to import';
     document.getElementById('csvConfirmBtn').disabled = _csvPreview.length===0;
@@ -3519,7 +3525,7 @@ function confirmCSVImport(){
   _csvPreview.forEach(row=>{
     const dup=contacts.find(c=>(row.phone&&c.phone===row.phone)||(row.email&&c.email&&c.email.toLowerCase()===row.email.toLowerCase()));
     if(dup){skipped++;return;}
-    contacts.push({id:genId(),name:row.name,phone:row.phone,email:row.email,group:row.group,tags:tag?[tag]:[],consent:smsOk,ageVerified:ageOk,notes:'Imported via CSV',updatedAt:new Date().toISOString()});
+    contacts.push({id:genId(),name:row.name,phone:row.phone,email:row.email,group:row.group,spend:row.spend||0,tags:tag?[tag]:[],consent:smsOk,ageVerified:ageOk,notes:'Imported via CSV',updatedAt:new Date().toISOString()});
     added++;
   });
   saveLocal();renderContacts();renderTagChips();

@@ -201,6 +201,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 </div>
 
 <div class="chip-row" id="tagChipRow"></div>
+<div class="chip-row" id="freqChipRow"></div>
 
 <div class="sync-bar" id="syncBar">
   <div class="sync-status">Sheets: <span id="syncStatusText">Connected</span></div>
@@ -218,6 +219,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 <div class="blast-bar" id="blastBar">
   <div class="bb-text"><span id="blastCount">0</span> selected</div>
   <div class="bb-actions">
+    <button class="bb-btn cancel" onclick="selectAllShown()">Select Shown</button>
     <button class="bb-btn cancel" onclick="toggleSelectMode(false)">Cancel</button>
     <button class="bb-btn start" onclick="openBlastComposer()">Blast Selected →</button>
   </div>
@@ -247,6 +249,14 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
         <input type="checkbox" id="fAgeVerified">
         <span>21+ age verified (required before CBD/THCA text or email marketing)</span>
       </label>
+    </div>
+    <div class="form-group"><label>Message Frequency Preference</label>
+      <select id="fFrequency">
+        <option value="any">No preference stated</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+      <div class="settings-hint">Set this when a customer tells you how often they want to hear from you — then filter by it before a blast.</div>
     </div>
     <div class="form-group"><label>Notes</label><textarea id="fNotes" rows="2" placeholder="Optional notes..."></textarea></div>
     <div class="modal-btns">
@@ -410,6 +420,12 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     <div class="modal-handle"></div>
     <div class="modal-title">COUPON MAKER</div>
 
+    <div class="form-group"><label>Load a Saved Coupon Template</label>
+      <select id="couponTemplateSelect" onchange="applyCouponTemplate(this.value)"><option value="">— new coupon —</option></select>
+      <div id="couponTemplateList" style="margin-top:0.5rem;"></div>
+      <div class="settings-hint">Save a design once, reload it anytime — usually the only thing you'll need to change is the date.</div>
+    </div>
+
     <div class="form-group"><label>Your Logo (optional — saved for next time)</label>
       <div style="display:flex;align-items:center;gap:10px;">
         <div id="couponLogoPreview" style="width:56px;height:56px;border-radius:10px;background:var(--sg-surface);border:1px solid var(--sg-border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;"><span style="font-size:9px;color:var(--sg-muted);">No logo</span></div>
@@ -427,8 +443,14 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     </div>
     <div class="form-group"><label>Headline</label><input type="text" id="couponHeadline" placeholder="e.g. 15% OFF"></div>
     <div class="form-group"><label>Subtext</label><input type="text" id="couponSubtext" placeholder="e.g. Show this at checkout"></div>
+    <div class="form-group"><label>Date / Expiry (the part that usually changes)</label><input type="text" id="couponExpiry" placeholder="e.g. Valid through Friday, Sept 19"></div>
     <div class="form-group"><label>Code (optional)</label><input type="text" id="couponCode" placeholder="e.g. SG15"></div>
+    <div class="form-group"><label>Theme Color</label>
+      <input type="color" id="couponThemeColor" value="#4BBB2A" style="height:44px;padding:4px;cursor:pointer;">
+      <div class="settings-hint">Switch this for seasonal themes — orange for Halloween, red for holidays, etc. Everything else stays the same.</div>
+    </div>
 
+    <button class="btn-cancel" style="width:100%;margin-bottom:0.75rem;" onclick="saveCouponTemplate()">💾 Save This Setup As a Template</button>
     <button class="btn-save" style="width:100%;" onclick="renderCouponPreview()">Generate Coupon</button>
 
     <div id="couponPreviewWrap" style="display:none;margin-top:1rem;text-align:center;">
@@ -613,6 +635,7 @@ let contacts = JSON.parse(localStorage.getItem('mb_contacts')||'[]');
     if(c.ageVerified===undefined){ c.ageVerified=false; changed=true; }
     if(c.responseCount===undefined){ c.responseCount=0; changed=true; }
     if(c.lastResponseAt===undefined){ c.lastResponseAt=''; changed=true; }
+    if(!c.frequency){ c.frequency='any'; changed=true; }
   });
   if(changed) localStorage.setItem('mb_contacts', JSON.stringify(contacts));
 })();
@@ -657,7 +680,8 @@ function defaultPromos(){
     {id:genId(),title:'48-Hour Flash Sale',code:'MURPH48',subject:'You Got 48 Hours',message:'You got 48 hours on this one, {name} - 48 Hrs. style. 15% off at Seymore Green, deal is done in 2 days flat. Come get it before time runs out.'},
     {id:genId(),title:'72-Hour Weekend Sale',code:'WKND72',subject:'72-Hour Weekend Sale',message:'72 hours only, {name} - this Friday through Sunday, save at Seymore Green. In-store and online. Do not wait til Monday.'},
     {id:genId(),title:'This Weekend Only',code:'FRIWKND',subject:'This Weekend At Seymore Green',message:'This weekend only, {name} - come through Seymore Green for fresh drops and deals before it is gone Monday morning.'},
-    {id:genId(),title:'Shop Online & Save',code:'ONLINE10',subject:'Shop Online, Save More',message:'Shop online right now at tshirtsbysg.com and save, {name}. Use code ONLINE10 at checkout - ships fast.'}
+    {id:genId(),title:'Shop Online & Save',code:'ONLINE10',subject:'Shop Online, Save More',message:'Shop online right now at tshirtsbysg.com and save, {name}. Use code ONLINE10 at checkout - ships fast.'},
+    {id:genId(),title:'Set Your Message Preference',code:'',subject:'How Often Do You Want To Hear From Us?',message:'Hey {name}, want fewer or more messages from Seymore Green? Reply WEEKLY for weekly deals, MONTHLY for less frequent updates, or STOP to opt out anytime.'}
   ];
 }
 let promos = JSON.parse(localStorage.getItem('mb_promos')||'null') || defaultPromos();
@@ -672,6 +696,8 @@ function savePromosLS(){ localStorage.setItem('mb_promos', JSON.stringify(promos
 let mbLogo = localStorage.getItem('mb_logo') || null;
 let couponSelectedPhotoId = null;
 let _couponDataUrl = null;
+let couponTemplates = JSON.parse(localStorage.getItem('mb_coupon_templates')||'[]');
+function saveCouponTemplatesLS(){ localStorage.setItem('mb_coupon_templates', JSON.stringify(couponTemplates)); }
 
 const DEFAULT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbw1H9gfd7TEReML7Q_rND3ddEGjFXTs4IS6gOwuMyRilRm1PJHX7Y347ofXaMPQpmAblw/exec';
 let settings = JSON.parse(localStorage.getItem('mb_settings')||'{}');
@@ -724,6 +750,19 @@ function renderTagChips(){
 }
 function setTagFilter(tag){ activeTagFilter = (activeTagFilter===tag)?'':tag; renderTagChips(); renderContacts(); }
 
+// FREQUENCY FILTER
+let activeFrequencyFilter = '';
+const FREQ_LABELS = {weekly:'🔁 Weekly',monthly:'🔁 Monthly',any:'No preference set'};
+function renderFreqChips(){
+  const row=document.getElementById('freqChipRow');
+  let html=`<div class="chip ${activeFrequencyFilter===''?'active':''}" onclick="setFreqFilter('')">All Frequencies</div>`;
+  html+=`<div class="chip ${activeFrequencyFilter==='weekly'?'active':''}" onclick="setFreqFilter('weekly')">🔁 Weekly</div>`;
+  html+=`<div class="chip ${activeFrequencyFilter==='monthly'?'active':''}" onclick="setFreqFilter('monthly')">🔁 Monthly</div>`;
+  html+=`<div class="chip ${activeFrequencyFilter==='any'?'active':''}" onclick="setFreqFilter('any')">No Preference Set</div>`;
+  row.innerHTML=html;
+}
+function setFreqFilter(f){ activeFrequencyFilter=(activeFrequencyFilter===f)?'':f; renderFreqChips(); renderContacts(); }
+
 // SELECT MODE / BULK BLAST
 function toggleSelectMode(on){
   selectMode=on;
@@ -745,16 +784,27 @@ function updateBlastBar(){
 }
 
 // RENDER
-function renderContacts(){
+function getVisibleContacts(){
   const q=document.getElementById('searchInput').value.toLowerCase();
-  let list=contacts.filter(c=>{
+  return contacts.filter(c=>{
     const match=c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.group||'').toLowerCase().includes(q);
     if(!match)return false;
     if(activeTab==='sms'&&!c.phone)return false;
     if(activeTab==='email'&&!c.email)return false;
     if(activeTagFilter && !(c.tags||[]).includes(activeTagFilter))return false;
+    if(activeFrequencyFilter && (c.frequency||'any')!==activeFrequencyFilter)return false;
     return true;
   });
+}
+function selectAllShown(){
+  const visible=getVisibleContacts();
+  visible.forEach(c=>selectedIds.add(c.id));
+  updateBlastBar();
+  renderContacts();
+  showToast(`${visible.length} contact(s) selected`);
+}
+function renderContacts(){
+  let list=getVisibleContacts();
   document.getElementById('allCount').textContent=contacts.length;
   const container=document.getElementById('contactsList');
   if(list.length===0){
@@ -775,7 +825,8 @@ function renderContacts(){
       const needsAge=(c.tags||[]).some(t=>t.indexOf('CBD')>-1||t.indexOf('THCA')>-1);
       const ageBadge=needsAge?(c.ageVerified?`<span class="consent-badge yes">21+ ✓</span>`:`<span class="consent-badge no">Age not verified</span>`):'';
       const respBadge=c.responseCount?`<span class="tag-chip-mini" style="background:rgba(240,180,41,0.15);color:#f0b429;">⚡ ${c.responseCount} repl${c.responseCount===1?'y':'ies'}</span>`:'';
-      const tagsHtml=(c.tags&&c.tags.length||respBadge)?`<div>${(c.tags||[]).map(t=>`<span class="tag-chip-mini">${t}</span>`).join('')}${respBadge}</div>`:'';
+      const freqBadge=(c.frequency && c.frequency!=='any')?`<span class="tag-chip-mini" style="background:rgba(96,165,250,0.15);color:#60a5fa;">${FREQ_LABELS[c.frequency]}</span>`:'';
+      const tagsHtml=(c.tags&&c.tags.length||respBadge||freqBadge)?`<div>${(c.tags||[]).map(t=>`<span class="tag-chip-mini">${t}</span>`).join('')}${respBadge}${freqBadge}</div>`:'';
       const callBtn=c.phone
         ?`<button class="action-btn call" onclick="event.stopPropagation();callContact(${idx})" title="Call">📞</button>`
         :`<button class="action-btn call" style="opacity:0.2;cursor:default">📞</button>`;
@@ -820,6 +871,7 @@ function openAdd(){
   ['fName','fPhone','fEmail','fGroup','fNotes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fConsent').checked=false;
   document.getElementById('fAgeVerified').checked=false;
+  document.getElementById('fFrequency').value='any';
   _fTags=[];
   renderFTagChips(_fTags);
   document.getElementById('addModal').classList.add('open');
@@ -834,6 +886,7 @@ function openEdit(idx){
   document.getElementById('fNotes').value=c.notes||'';
   document.getElementById('fConsent').checked=!!c.consent;
   document.getElementById('fAgeVerified').checked=!!c.ageVerified;
+  document.getElementById('fFrequency').value=c.frequency||'any';
   _fTags=(c.tags||[]).slice();
   renderFTagChips(_fTags);
   document.getElementById('addModal').classList.add('open');
@@ -851,6 +904,7 @@ function saveContact(){
     tags:_fTags.slice(),
     consent:document.getElementById('fConsent').checked,
     ageVerified:document.getElementById('fAgeVerified').checked,
+    frequency:document.getElementById('fFrequency').value,
     responseCount: editIdx>=0?(contacts[editIdx].responseCount||0):0,
     lastResponseAt: editIdx>=0?(contacts[editIdx].lastResponseAt||''):'',
     notes:document.getElementById('fNotes').value.trim(),
@@ -1213,10 +1267,14 @@ function openCouponMaker(){
   renderCouponLogoPreview();
   renderCouponPhotoPicker();
   populateCouponPromoSelect();
+  populateCouponTemplateSelect();
+  document.getElementById('couponTemplateSelect').value='';
   document.getElementById('couponPromoSelect').value='';
   document.getElementById('couponHeadline').value='';
   document.getElementById('couponSubtext').value='';
+  document.getElementById('couponExpiry').value='';
   document.getElementById('couponCode').value='';
+  document.getElementById('couponThemeColor').value='#4BBB2A';
   document.getElementById('couponModal').classList.add('open');
 }
 function closeCouponMaker(){ document.getElementById('couponModal').classList.remove('open'); }
@@ -1263,6 +1321,52 @@ function applyPromoToCoupon(id){
   document.getElementById('couponSubtext').value=p.message.length>70?p.message.slice(0,67)+'...':p.message;
   document.getElementById('couponCode').value=p.code||'';
 }
+function populateCouponTemplateSelect(){
+  const sel=document.getElementById('couponTemplateSelect');
+  sel.innerHTML='<option value="">— new coupon —</option>'+couponTemplates.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  renderCouponTemplateList();
+}
+function renderCouponTemplateList(){
+  const wrap=document.getElementById('couponTemplateList');
+  if(couponTemplates.length===0){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = couponTemplates.map(t=>`<span class="tag-chip-mini" style="font-size:11px;padding:3px 8px;">${t.name} <span onclick="event.stopPropagation();deleteCouponTemplate('${t.id}')" style="color:#ef4444;margin-left:5px;cursor:pointer;">✕</span></span>`).join(' ');
+}
+function applyCouponTemplate(id){
+  if(!id)return;
+  const t=couponTemplates.find(x=>x.id===id); if(!t)return;
+  couponSelectedPhotoId=t.photoId||null;
+  document.getElementById('couponHeadline').value=t.headline||'';
+  document.getElementById('couponSubtext').value=t.subtext||'';
+  document.getElementById('couponExpiry').value=t.expiry||'';
+  document.getElementById('couponCode').value=t.code||'';
+  document.getElementById('couponThemeColor').value=t.themeColor||'#4BBB2A';
+  renderCouponPhotoPicker();
+  showToast(`Loaded "${t.name}" — just update the date and generate`);
+}
+function saveCouponTemplate(){
+  const name=prompt('Name this coupon template (e.g. "Weekly Apparel Coupon"):');
+  if(!name)return;
+  const t={
+    id:genId(), name,
+    photoId:couponSelectedPhotoId,
+    headline:document.getElementById('couponHeadline').value.trim(),
+    subtext:document.getElementById('couponSubtext').value.trim(),
+    expiry:document.getElementById('couponExpiry').value.trim(),
+    code:document.getElementById('couponCode').value.trim(),
+    themeColor:document.getElementById('couponThemeColor').value
+  };
+  couponTemplates.push(t);
+  saveCouponTemplatesLS();
+  populateCouponTemplateSelect();
+  document.getElementById('couponTemplateSelect').value=t.id;
+  showToast('✓ Coupon template saved — reload it anytime, just update the date');
+}
+function deleteCouponTemplate(id){
+  if(!confirm('Delete this coupon template?'))return;
+  couponTemplates=couponTemplates.filter(t=>t.id!==id);
+  saveCouponTemplatesLS();
+  populateCouponTemplateSelect();
+}
 function loadImage(src){
   return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=reject; img.src=src; });
 }
@@ -1291,7 +1395,9 @@ async function renderCouponPreview(){
   try{ await document.fonts.load('400 90px "Bebas Neue"'); await document.fonts.load('600 34px "DM Sans"'); }catch(e){}
   const headline=(document.getElementById('couponHeadline').value.trim()||'SPECIAL OFFER').toUpperCase();
   const subtext=document.getElementById('couponSubtext').value.trim();
+  const expiry=document.getElementById('couponExpiry').value.trim();
   const code=document.getElementById('couponCode').value.trim();
+  const theme=document.getElementById('couponThemeColor').value||'#4BBB2A';
   const photo = couponSelectedPhotoId ? gallery.find(g=>g.id===couponSelectedPhotoId) : null;
 
   const canvas=document.getElementById('couponCanvas');
@@ -1322,19 +1428,27 @@ async function renderCouponPreview(){
     }catch(e){}
   } else {
     ctx.font='400 50px "Bebas Neue", sans-serif';
-    ctx.fillStyle='#4BBB2A'; ctx.fillText('SEYMORE', padX, imgH+95);
+    ctx.fillStyle=theme; ctx.fillText('SEYMORE', padX, imgH+95);
     const w1=ctx.measureText('SEYMORE ').width;
     ctx.fillStyle='#FFFFFF'; ctx.fillText('GREEN', padX+w1, imgH+95);
   }
 
+  let cursorY=imgH+215;
   ctx.font='400 92px "Bebas Neue", sans-serif';
-  ctx.fillStyle='#4BBB2A';
-  let afterHeadlineY = wrapCanvasText(ctx, headline, padX, imgH+215, W-padX*2, 96);
+  ctx.fillStyle=theme;
+  cursorY = wrapCanvasText(ctx, headline, padX, cursorY, W-padX*2, 96);
 
   if(subtext){
+    cursorY += 55;
     ctx.font='400 32px "DM Sans", sans-serif';
     ctx.fillStyle='#B6B6B6';
-    wrapCanvasText(ctx, subtext, padX, afterHeadlineY+55, W-padX*2, 42);
+    cursorY = wrapCanvasText(ctx, subtext, padX, cursorY, W-padX*2, 42);
+  }
+  if(expiry){
+    cursorY += 48;
+    ctx.font='700 30px "DM Sans", sans-serif';
+    ctx.fillStyle='#FFFFFF';
+    cursorY = wrapCanvasText(ctx, expiry, padX, cursorY, W-padX*2, 38);
   }
 
   if(code){
@@ -1342,9 +1456,9 @@ async function renderCouponPreview(){
     const codeText='CODE: '+code.toUpperCase();
     const tw=ctx.measureText(codeText).width;
     const pillW=tw+70, pillH=70, pillY=H-165;
-    ctx.strokeStyle='#4BBB2A'; ctx.lineWidth=3;
+    ctx.strokeStyle=theme; ctx.lineWidth=3;
     roundRect(ctx,padX,pillY,pillW,pillH,35); ctx.stroke();
-    ctx.fillStyle='#4BBB2A';
+    ctx.fillStyle=theme;
     ctx.fillText(codeText, padX+35, pillY+46);
   }
 
@@ -1547,6 +1661,7 @@ if(contacts.length===0){
 
 updateSyncBar();
 renderTagChips();
+renderFreqChips();
 renderContacts();
 </script>
 

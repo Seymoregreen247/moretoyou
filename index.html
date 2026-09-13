@@ -63,7 +63,8 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 .sel-check{width:20px;height:20px;flex-shrink:0;accent-color:var(--sg-green);}
 .avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--sg-green),#2d7a18);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--sg-dark);flex-shrink:0;}
 .contact-info{flex:1;min-width:0;}
-.contact-name{font-weight:600;font-size:15px;color:var(--sg-white);white-space:normal;overflow-wrap:break-word;line-height:1.25;}
+.contact-name{font-weight:600;font-size:15px;color:var(--sg-white);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:normal;overflow-wrap:normal;line-height:1.25;}
+.contact-spend{font-size:13px;font-weight:700;color:var(--sg-green);margin-top:1px;}
 .contact-sub{font-size:12px;color:var(--sg-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .contact-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;max-width:190px;}
 .action-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--sg-border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:all 0.18s;text-decoration:none;}
@@ -3211,11 +3212,11 @@ function renderContacts(){
         :'';
       const checkbox=selectMode?`<input type="checkbox" class="sel-check" ${selectedIds.has(c.id)?'checked':''} onclick="event.stopPropagation();toggleSelect('${c.id}')">`:'';
       const cardClick=selectMode?`toggleSelect('${c.id}')`:`openEdit(${idx})`;
-      const spendBadge=c.spend?`<span class="tag-chip-mini" style="background:rgba(75,187,42,0.15);color:var(--sg-green);font-weight:700;">$${c.spend.toLocaleString(undefined,{minimumFractionDigits:c.spend%1?2:0,maximumFractionDigits:2})}</span>`:'';
+      const spendLine=c.spend?`<div class="contact-spend">$${c.spend.toLocaleString(undefined,{minimumFractionDigits:c.spend%1?2:0,maximumFractionDigits:2})} spent</div>`:'';
       html+=`<div class="contact-card" onclick="${cardClick}">
         ${checkbox}
         <div class="avatar">${initials(c.name)}</div>
-        <div class="contact-info"><div class="contact-name">${c.name}${spendBadge?` ${spendBadge}`:''}</div><div class="contact-sub">${sub||'No details'}</div>${(consentBadge||ageBadge)?`<div style="margin-top:4px;">${consentBadge}${ageBadge}</div>`:''}${tagsHtml}</div>
+        <div class="contact-info"><div class="contact-name">${c.name}</div>${spendLine}<div class="contact-sub">${sub||'No details'}</div>${(consentBadge||ageBadge)?`<div style="margin-top:4px;">${consentBadge}${ageBadge}</div>`:''}${tagsHtml}</div>
         ${selectMode?'':`<div class="contact-actions">${callBtn}${smsBtn}${emailBtn}
           <button class="action-btn zap" onclick="event.stopPropagation();logResponse(${idx})" title="Log a response from this contact">⚡</button>
           ${optOutBtn}

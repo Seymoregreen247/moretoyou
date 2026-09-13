@@ -278,6 +278,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     <div class="form-group"><label>To</label><input type="text" id="cTo" placeholder="Name, number, or email..."></div>
     <div id="subjectGroup" class="form-group" style="display:none;"><label>Subject</label><input type="text" id="cSubject" placeholder="Message subject"></div>
     <div class="form-group"><label>Load a Promotion (optional)</label><select id="cPromoSelect" onchange="applyPromoToCompose(this.value)"><option value="">— none —</option></select></div>
+    <div class="form-group"><label>Load a Link (optional)</label><select id="cLinkSelect" onchange="applyLinkToCompose(this.value)"><option value="">— none —</option></select></div>
     <div class="form-group"><label>Message</label><textarea id="cMessage" rows="5" placeholder="Type your message here..."></textarea></div>
     <a id="sendLink" href="#" class="btn-send" onclick="return handleSend()">
       <span id="sendIcon">📱</span><span id="sendLabel">OPEN IN MESSAGES</span>
@@ -298,6 +299,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
       <div class="tools-item" onclick="openImport()"><span class="ti-icon">📥</span><div>Import Contacts<span class="ti-sub">CSV file or phone contacts</span></div></div>
       <div class="tools-item" onclick="openTemplates()"><span class="ti-icon">🗓️</span><div>Daily Blast Templates<span class="ti-sub">Premade messages for every day</span></div></div>
       <div class="tools-item" onclick="openPromotions()"><span class="ti-icon">🎁</span><div>Promotions<span class="ti-sub">10% off, 15% off, act-now deals</span></div></div>
+      <div class="tools-item" onclick="openLinksLibrary()"><span class="ti-icon">🔗</span><div>Links Library<span class="ti-sub">Your apps, games, and store links</span></div></div>
       <div class="tools-item" onclick="openCouponMaker()"><span class="ti-icon">🎟️</span><div>Coupon Maker<span class="ti-sub">Logo + product photo + discount, one image</span></div></div>
       <div class="tools-item" onclick="startSelectModeFromTools()"><span class="ti-icon">📤</span><div>Start a Blast<span class="ti-sub">Select contacts and send</span></div></div>
       <div class="tools-item" onclick="closeTools();openSettings();"><span class="ti-icon">📊</span><div>Google Sheets Sync<span class="ti-sub">Backup and restore contacts</span></div></div>
@@ -414,6 +416,31 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
   </div>
 </div>
 
+<!-- LINKS LIBRARY MODAL -->
+<div class="modal-overlay" id="linksModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">LINKS LIBRARY</div>
+
+    <div id="linkListView">
+      <div class="settings-hint" style="margin-bottom:0.5rem;">Your apps, games, and stores — one tap to drop a link into any message.</div>
+      <div id="linkListWrap"></div>
+      <button class="btn-save" style="width:100%;" onclick="openLinkEditor(null)">+ New Link</button>
+      <div class="modal-btns"><button class="btn-cancel" onclick="closeLinksLibrary()">Close</button></div>
+    </div>
+
+    <div id="linkEditView" style="display:none;">
+      <div class="form-group"><label>Link Name</label><input type="text" id="linkTitle" placeholder="e.g. Pop the Question"></div>
+      <div class="form-group"><label>URL</label><input type="text" id="linkUrl" placeholder="e.g. https://pop-the-questions.netlify.app"></div>
+      <div class="form-group"><label>Lead-in line (optional — goes right before the link)</label><input type="text" id="linkBlurb" placeholder="e.g. Try our new game:"></div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="showLinkListView()">Cancel</button>
+        <button class="btn-save" onclick="saveLinkEdit()">Save Link</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- COUPON MAKER MODAL -->
 <div class="modal-overlay" id="couponModal">
   <div class="modal">
@@ -494,6 +521,8 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
       <div class="chip-row" style="padding:0 0 0.5rem;" id="blastTemplateChipRow"></div>
       <div class="settings-hint" style="margin:0 0 0.3rem;">Promotions</div>
       <div class="chip-row" style="padding:0 0 0.75rem;" id="blastPromoChipRow"></div>
+      <div class="settings-hint" style="margin:0 0 0.3rem;">Links</div>
+      <div class="chip-row" style="padding:0 0 0.75rem;" id="blastLinkChipRow"></div>
       <div class="form-group"><label>Subject (used for email)</label><input type="text" id="blastSubjectInput"></div>
       <div class="form-group"><label>Message — {name} auto-fills each contact's first name</label><textarea id="blastMessageInput" rows="5"></textarea></div>
       <button class="btn-save" style="width:100%;" onclick="startBlastQueue()">Start Blast Queue</button>
@@ -692,6 +721,23 @@ let promos = JSON.parse(localStorage.getItem('mb_promos')||'null') || defaultPro
   if(newOnes.length){ promos = promos.concat(newOnes); localStorage.setItem('mb_promos', JSON.stringify(promos)); }
 })();
 function savePromosLS(){ localStorage.setItem('mb_promos', JSON.stringify(promos)); }
+
+function defaultLinks(){
+  return [
+    {id:genId(),title:'Pop the Question',url:'https://pop-the-questions.netlify.app',blurb:'Try our new game:'},
+    {id:genId(),title:'SG Custom Tees',url:'https://custom-tees-sg.netlify.app',blurb:'Build your own custom tee:'},
+    {id:genId(),title:'Top 10 Tees',url:'https://top10tees.netlify.app',blurb:'Shop the streetwear drop:'},
+    {id:genId(),title:'Instant Quote',url:'https://sg-insta-quote.netlify.app',blurb:'Get an instant price on your order:'},
+    {id:genId(),title:'Any Given Sunday',url:'https://any-given-sunday-ags.netlify.app',blurb:'Check this out:'}
+  ];
+}
+let links = JSON.parse(localStorage.getItem('mb_links')||'null') || defaultLinks();
+(function seedNewLinks(){
+  const existingUrls = new Set(links.map(l=>l.url));
+  const newOnes = defaultLinks().filter(l=>!existingUrls.has(l.url) && !links.some(x=>x.title===l.title));
+  if(newOnes.length){ links = links.concat(newOnes); localStorage.setItem('mb_links', JSON.stringify(links)); }
+})();
+function saveLinksLS(){ localStorage.setItem('mb_links', JSON.stringify(links)); }
 
 let mbLogo = localStorage.getItem('mb_logo') || null;
 let couponSelectedPhotoId = null;
@@ -955,7 +1001,9 @@ function openCompose(){
   document.getElementById('composeTitle').textContent='SEND MESSAGE';
   document.getElementById('cTo').value='';document.getElementById('cMessage').value='';document.getElementById('cSubject').value='';
   document.getElementById('cPromoSelect').value='';
+  document.getElementById('cLinkSelect').value='';
   populateComposePromoSelect();
+  populateComposeLinkSelect();
   setComposeType('sms',document.querySelector('.type-btn'));
   document.getElementById('composeModal').classList.add('open');
 }
@@ -967,7 +1015,9 @@ function openComposeTo(idx,type){
   document.getElementById('composeTitle').textContent='MESSAGE '+_cc.name.toUpperCase();
   document.getElementById('cMessage').value='';document.getElementById('cSubject').value='';
   document.getElementById('cPromoSelect').value='';
+  document.getElementById('cLinkSelect').value='';
   populateComposePromoSelect();
+  populateComposeLinkSelect();
   const btns=document.querySelectorAll('#typeToggle .type-btn');
   if(type==='sms'){document.getElementById('cTo').value=_cc.phone||'';setComposeType('sms',btns[0]);}
   else{document.getElementById('cTo').value=_cc.email||'';setComposeType('email',btns[1]);}
@@ -1258,6 +1308,63 @@ function loadBlastPromo(id){
   document.getElementById('blastMessageInput').value=p.message;
 }
 
+// LINKS LIBRARY
+function openLinksLibrary(){ closeTools(); renderLinkList(); showLinkListView(); document.getElementById('linksModal').classList.add('open'); }
+function closeLinksLibrary(){ document.getElementById('linksModal').classList.remove('open'); }
+function showLinkListView(){ document.getElementById('linkListView').style.display='block'; document.getElementById('linkEditView').style.display='none'; }
+function showLinkEditView(){ document.getElementById('linkListView').style.display='none'; document.getElementById('linkEditView').style.display='block'; }
+function renderLinkList(){
+  const wrap=document.getElementById('linkListWrap');
+  if(links.length===0){ wrap.innerHTML=`<div class="empty-state"><div class="empty-msg">No links yet.</div></div>`; return; }
+  wrap.innerHTML = links.map(l=>`
+    <div class="promo-card">
+      <div class="promo-card-top"><strong>${l.title}</strong></div>
+      <div class="promo-card-msg">${l.url}</div>
+      <div class="modal-btns" style="margin-top:0.6rem;">
+        <button class="btn-cancel" onclick="deleteLink('${l.id}')">Delete</button>
+        <button class="btn-save" onclick="openLinkEditor('${l.id}')">Edit</button>
+      </div>
+    </div>`).join('');
+}
+let _editingLinkId=null;
+function openLinkEditor(id){
+  _editingLinkId=id;
+  const l = id? links.find(x=>x.id===id) : {title:'',url:'',blurb:''};
+  document.getElementById('linkTitle').value=l.title||'';
+  document.getElementById('linkUrl').value=l.url||'';
+  document.getElementById('linkBlurb').value=l.blurb||'';
+  showLinkEditView();
+}
+function saveLinkEdit(){
+  const title=document.getElementById('linkTitle').value.trim();
+  let url=document.getElementById('linkUrl').value.trim();
+  if(!title){alert('Give the link a name.');return;}
+  if(!url){alert('Add a URL.');return;}
+  if(!/^https?:\/\//i.test(url)) url='https://'+url;
+  const data={title,url,blurb:document.getElementById('linkBlurb').value.trim()};
+  if(_editingLinkId){ const l=links.find(x=>x.id===_editingLinkId); Object.assign(l,data); }
+  else { links.push(Object.assign({id:genId()},data)); }
+  saveLinksLS(); renderLinkList(); showLinkListView();
+  showToast('✓ Link saved');
+}
+function deleteLink(id){ if(!confirm('Delete this link?'))return; links=links.filter(l=>l.id!==id); saveLinksLS(); renderLinkList(); }
+function populateComposeLinkSelect(){
+  const sel=document.getElementById('cLinkSelect');
+  sel.innerHTML='<option value="">— none —</option>'+links.map(l=>`<option value="${l.id}">${l.title}</option>`).join('');
+}
+function linkText(l){ return (l.blurb?l.blurb+' ':'')+l.url; }
+function applyLinkToCompose(id){
+  if(!id)return;
+  const l=links.find(x=>x.id===id); if(!l)return;
+  const box=document.getElementById('cMessage');
+  box.value = box.value.trim() ? box.value.trim()+'\n\n'+linkText(l) : linkText(l);
+}
+function loadBlastLink(id){
+  const l=links.find(x=>x.id===id); if(!l)return;
+  const box=document.getElementById('blastMessageInput');
+  box.value = box.value.trim() ? box.value.trim()+'\n\n'+linkText(l) : linkText(l);
+}
+
 // COUPON MAKER
 function openCouponMaker(){
   closeTools();
@@ -1504,6 +1611,7 @@ function openBlastComposer(){
   document.getElementById('blastRecipientCount').textContent=selectedIds.size;
   document.getElementById('blastTemplateChipRow').innerHTML = DAY_KEYS.map(d=>`<div class="chip" onclick="loadBlastTemplate('${d}')">${DAY_LABELS[d]}</div>`).join('')+`<div class="chip" onclick="document.getElementById('blastMessageInput').value='';document.getElementById('blastSubjectInput').value='';">Custom</div>`;
   document.getElementById('blastPromoChipRow').innerHTML = promos.map(p=>`<div class="chip" onclick="loadBlastPromo('${p.id}')">🎁 ${p.title}</div>`).join('');
+  document.getElementById('blastLinkChipRow').innerHTML = links.map(l=>`<div class="chip" onclick="loadBlastLink('${l.id}')">🔗 ${l.title}</div>`).join('');
   loadBlastTemplate(todayKey());
   document.getElementById('blastModal').classList.add('open');
 }

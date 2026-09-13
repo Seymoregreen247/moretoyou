@@ -233,7 +233,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     <div class="form-group"><label>Full Name</label><input type="text" id="fName" placeholder="e.g. Marcus Williams"></div>
     <div class="form-group"><label>Phone Number</label><input type="tel" id="fPhone" placeholder="(617) 555-0100"></div>
     <div class="form-group"><label>Email Address</label><input type="email" id="fEmail" placeholder="email@example.com"></div>
-    <div class="form-group"><label>Group / Tag (free text)</label><input type="text" id="fGroup" placeholder="e.g. Customer, Team, School..."></div>
+    <div class="form-group"><label>Group / Tag (free text)</label><input type="text" id="fGroup" placeholder="e.g. Customer, Team, or a business name like Tony's Pizza..."></div>
     <div class="form-group">
       <label>Quick Tags</label>
       <div class="chip-row" style="padding:0;" id="fTagChips"></div>
@@ -352,6 +352,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
           <option value="🖨️ Custom Order">🖨️ Custom Order</option>
           <option value="⭐ VIP">⭐ VIP</option>
           <option value="👥 Team">👥 Team</option>
+          <option value="🏢 Business">🏢 Business</option>
         </select>
       </div>
       <div class="form-group consent-row">
@@ -373,6 +374,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
           <option value="🖨️ Custom Order">🖨️ Custom Order</option>
           <option value="⭐ VIP">⭐ VIP</option>
           <option value="👥 Team">👥 Team</option>
+          <option value="🏢 Business">🏢 Business</option>
         </select>
       </div>
       <div class="form-group consent-row">
@@ -470,7 +472,12 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     </div>
     <div class="form-group"><label>Headline</label><input type="text" id="couponHeadline" placeholder="e.g. 15% OFF"></div>
     <div class="form-group"><label>Subtext</label><input type="text" id="couponSubtext" placeholder="e.g. Show this at checkout"></div>
-    <div class="form-group"><label>Date / Expiry (the part that usually changes)</label><input type="text" id="couponExpiry" placeholder="e.g. Valid through Friday, Sept 19"></div>
+    <div class="form-group"><label>Date / Expiry (the part that usually changes)</label>
+      <input type="date" id="couponExpiryPicker" onchange="formatCouponExpiry()">
+      <input type="hidden" id="couponExpiry">
+      <div class="settings-hint" id="couponExpiryPreview" style="margin-top:4px;"></div>
+      <button class="btn-cancel" id="couponCalBtn" style="display:none;width:100%;margin-top:0.5rem;" onclick="addCouponCalendarReminder()">📅 Add Reminder to My Google Calendar</button>
+    </div>
     <div class="form-group"><label>Code (optional)</label><input type="text" id="couponCode" placeholder="e.g. SG15"></div>
     <div class="form-group"><label>Theme Color</label>
       <input type="color" id="couponThemeColor" value="#4BBB2A" style="height:44px;padding:4px;cursor:pointer;">
@@ -647,7 +654,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
   }
 })();
 
-const PRESET_TAGS = ['🌿 CBD/THCA','👕 Apparel','🖨️ Custom Order','⭐ VIP','👥 Team','⚡ Quick Responder'];
+const PRESET_TAGS = ['🌿 CBD/THCA','👕 Apparel','🖨️ Custom Order','⭐ VIP','👥 Team','🏢 Business','⚡ Quick Responder'];
 const DAY_KEYS = ['mon','tue','wed','thu','fri','sat','sun'];
 const DAY_LABELS = {mon:'Mon',tue:'Tue',wed:'Wed',thu:'Thu',fri:'Fri',sat:'Sat',sun:'Sun'};
 
@@ -1044,8 +1051,10 @@ function buildEmailUrl(to,subject,msg){
 }
 function handleSend(){
   const to=document.getElementById('cTo').value.trim();
-  const msg=document.getElementById('cMessage').value.trim();
-  const subject=document.getElementById('cSubject').value.trim();
+  let msg=document.getElementById('cMessage').value.trim();
+  let subject=document.getElementById('cSubject').value.trim();
+  msg=personalizeSingle(msg);
+  subject=personalizeSingle(subject);
   if(!to){alert('Enter a recipient first.');return false;}
   if(composeType==='sms'){let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;}
   else{
@@ -1296,11 +1305,16 @@ function populateComposePromoSelect(){
   const sel=document.getElementById('cPromoSelect');
   sel.innerHTML='<option value="">— none —</option>'+promos.map(p=>`<option value="${p.id}">${p.title}</option>`).join('');
 }
+function personalizeSingle(text){
+  if(!text)return text;
+  if(!(_cc && _cc.name)) return text; // no contact context — leave {name} as-is rather than stripping it
+  return text.replace(/\{name\}/gi, _cc.name.split(' ')[0]);
+}
 function applyPromoToCompose(id){
   if(!id)return;
   const p=promos.find(x=>x.id===id); if(!p)return;
-  document.getElementById('cMessage').value=p.message;
-  if(document.getElementById('subjectGroup').style.display!=='none') document.getElementById('cSubject').value=p.subject||'';
+  document.getElementById('cMessage').value=personalizeSingle(p.message);
+  if(document.getElementById('subjectGroup').style.display!=='none') document.getElementById('cSubject').value=personalizeSingle(p.subject||'');
 }
 function loadBlastPromo(id){
   const p=promos.find(x=>x.id===id); if(!p)return;
@@ -1380,9 +1394,39 @@ function openCouponMaker(){
   document.getElementById('couponHeadline').value='';
   document.getElementById('couponSubtext').value='';
   document.getElementById('couponExpiry').value='';
+  document.getElementById('couponExpiryPicker').value='';
+  document.getElementById('couponExpiryPreview').textContent='';
+  document.getElementById('couponCalBtn').style.display='none';
   document.getElementById('couponCode').value='';
   document.getElementById('couponThemeColor').value='#4BBB2A';
   document.getElementById('couponModal').classList.add('open');
+}
+function formatCouponExpiry(){
+  const val=document.getElementById('couponExpiryPicker').value;
+  const preview=document.getElementById('couponExpiryPreview');
+  const calBtn=document.getElementById('couponCalBtn');
+  if(!val){ document.getElementById('couponExpiry').value=''; preview.textContent=''; calBtn.style.display='none'; return; }
+  const [y,m,d]=val.split('-').map(Number);
+  const dateObj=new Date(y,m-1,d);
+  const formatted='Valid through '+dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('couponExpiry').value=formatted;
+  preview.textContent=formatted;
+  calBtn.style.display='block';
+}
+function addCouponCalendarReminder(){
+  const val=document.getElementById('couponExpiryPicker').value;
+  if(!val){ alert('Pick a date first.'); return; }
+  const [y,m,d]=val.split('-').map(Number);
+  const fmt=n=>String(n).padStart(2,'0');
+  const startStr=`${y}${fmt(m)}${fmt(d)}`;
+  const endDate=new Date(y,m-1,d+1);
+  const endStr=`${endDate.getFullYear()}${fmt(endDate.getMonth()+1)}${fmt(endDate.getDate())}`;
+  const headline=document.getElementById('couponHeadline').value.trim()||'Seymore Green Promo';
+  const code=document.getElementById('couponCode').value.trim();
+  const title=encodeURIComponent(`Promo ends: ${headline}`);
+  const details=encodeURIComponent(`Close out this promo${code?` (code ${code})`:''} and load the next one in MoneyBlast.`);
+  const url=`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startStr}/${endStr}&details=${details}`;
+  window.open(url,'_blank');
 }
 function closeCouponMaker(){ document.getElementById('couponModal').classList.remove('open'); }
 function renderCouponLogoPreview(){
@@ -1445,6 +1489,9 @@ function applyCouponTemplate(id){
   document.getElementById('couponHeadline').value=t.headline||'';
   document.getElementById('couponSubtext').value=t.subtext||'';
   document.getElementById('couponExpiry').value=t.expiry||'';
+  document.getElementById('couponExpiryPicker').value='';
+  document.getElementById('couponExpiryPreview').textContent=t.expiry||'';
+  document.getElementById('couponCalBtn').style.display='none';
   document.getElementById('couponCode').value=t.code||'';
   document.getElementById('couponThemeColor').value=t.themeColor||'#4BBB2A';
   renderCouponPhotoPicker();

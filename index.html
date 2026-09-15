@@ -192,7 +192,7 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 
 <div class="search-wrap">
   <span class="search-icon">🔍</span>
-  <input type="text" id="searchInput" placeholder="Search contacts..." oninput="renderContacts()">
+  <input type="text" id="searchInput" placeholder="Search contacts..." autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" oninput="renderContacts()">
 </div>
 
 <div class="tabs">
@@ -3156,9 +3156,16 @@ function updateBlastBar(){
 
 // RENDER
 function getVisibleContacts(){
-  const q=document.getElementById('searchInput').value.toLowerCase();
+  const q=document.getElementById('searchInput').value.toLowerCase().trim();
   return contacts.filter(c=>{
-    const match=c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.email||'').toLowerCase().includes(q)||(c.group||'').toLowerCase().includes(q);
+    const name=(c.name||'').toLowerCase();
+    const phone=(c.phone||'').toLowerCase();
+    const email=(c.email||'').toLowerCase();
+    const group=(c.group||'').toLowerCase();
+    const nameWordMatch=q===''?true:name.split(' ').some(word=>word.startsWith(q));
+    const match = q===''
+      ? true
+      : (nameWordMatch || name.includes(q) || phone.includes(q) || email.includes(q) || group.includes(q));
     if(!match)return false;
     if(activeTab==='sms'&&!c.phone)return false;
     if(activeTab==='email'&&!c.email)return false;
@@ -3183,7 +3190,7 @@ function renderContacts(){
     return;
   }
   const grouped={};
-  list.forEach(c=>{const l=c.name[0].toUpperCase();if(!grouped[l])grouped[l]=[];grouped[l].push(c);});
+  list.forEach(c=>{const l=((c.name||'?')[0]||'?').toUpperCase();if(!grouped[l])grouped[l]=[];grouped[l].push(c);});
   let html='';
   Object.keys(grouped).sort().forEach(letter=>{
     html+=`<div class="section-label">${letter}</div>`;

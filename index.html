@@ -281,12 +281,34 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
     <div id="subjectGroup" class="form-group" style="display:none;"><label>Subject</label><input type="text" id="cSubject" placeholder="Message subject"></div>
     <div class="form-group"><label>Load a Promotion (optional)</label><select id="cPromoSelect" onchange="applyPromoToCompose(this.value)"><option value="">— none —</option></select></div>
     <div class="form-group"><label>Load a Link (optional)</label><select id="cLinkSelect" onchange="applyLinkToCompose(this.value)"><option value="">— none —</option></select></div>
-    <div class="form-group"><label>Message</label><textarea id="cMessage" rows="5" placeholder="Type your message here..."></textarea></div>
+    <div class="form-group"><label>Message (optional)</label><textarea id="cMessage" rows="5" placeholder="Type your message here — a discount, or just something special to them..."></textarea></div>
+    <div class="form-group">
+      <label>Attach a Photo (optional)</label>
+      <div id="cPhotoPreviewRow" style="display:none;align-items:center;gap:10px;margin-bottom:8px;">
+        <img id="cPhotoPreviewImg" style="width:52px;height:52px;border-radius:10px;object-fit:cover;border:1px solid var(--sg-border);">
+        <span id="cPhotoPreviewName" style="font-size:12px;color:var(--sg-gray);flex:1;"></span>
+        <button type="button" class="btn-cancel" style="flex:0;padding:0.4rem 0.8rem;font-size:12px;" onclick="clearComposePhoto()">Remove</button>
+      </div>
+      <button type="button" class="btn-cancel" style="width:100%;" onclick="openComposePhotoPicker()">📷 Choose from Gallery</button>
+    </div>
     <a id="sendLink" href="#" class="btn-send" onclick="return handleSend()">
       <span id="sendIcon">📱</span><span id="sendLabel">OPEN IN MESSAGES</span>
     </a>
     <div class="modal-btns" style="margin-top:0.5rem;">
       <button class="btn-cancel" onclick="closeCompose()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPOSE PHOTO PICKER MODAL -->
+<div class="modal-overlay" id="composePhotoPickerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">CHOOSE A PHOTO</div>
+    <div class="gallery-filters" id="cPhotoFilterRow" style="display:flex;gap:6px;overflow-x:auto;margin-bottom:0.85rem;"></div>
+    <div class="gallery-grid" id="cPhotoPickerGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:50vh;overflow-y:auto;"></div>
+    <div class="modal-btns" style="margin-top:1rem;">
+      <button class="btn-cancel" style="width:100%;" onclick="closeComposePhotoPicker()">Close</button>
     </div>
   </div>
 </div>
@@ -559,6 +581,23 @@ header{background:var(--sg-dark);border-bottom:1.5px solid var(--sg-border);padd
 
     <div class="modal-btns" id="blastCloseRow">
       <button class="btn-cancel" onclick="closeBlastModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS PIN GATE MODAL -->
+<div class="modal-overlay" id="settingsPinModal">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">ENTER PIN</div>
+    <div class="form-group">
+      <label>Settings are PIN-protected</label>
+      <input type="password" id="sPinInput" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="PIN" onkeydown="settingsPinKeydown(event)">
+      <div id="sPinError" style="display:none;color:#ef4444;font-size:12px;margin-top:6px;">Wrong PIN — try again.</div>
+    </div>
+    <div class="modal-btns" style="margin-top:0.75rem;">
+      <button class="btn-cancel" onclick="closeSettingsPin()">Cancel</button>
+      <button class="btn-save" onclick="checkSettingsPin()">Unlock</button>
     </div>
   </div>
 </div>
@@ -2998,6 +3037,7 @@ let editIdx = -1;
 let activeTab = 'all';
 let activeTagFilter = '';
 let composeType = 'sms';
+let composeAttachedPhotoId = null;
 let selectMode = false;
 let selectedIds = new Set();
 
@@ -3339,6 +3379,7 @@ function openCompose(){
   document.getElementById('cLinkSelect').value='';
   populateComposePromoSelect();
   populateComposeLinkSelect();
+  clearComposePhoto();
   setComposeType('sms',document.querySelector('.type-btn'));
   document.getElementById('composeModal').classList.add('open');
 }
@@ -3353,10 +3394,44 @@ function openComposeTo(idx,type){
   document.getElementById('cLinkSelect').value='';
   populateComposePromoSelect();
   populateComposeLinkSelect();
+  clearComposePhoto();
   const btns=document.querySelectorAll('#typeToggle .type-btn');
   if(type==='sms'){document.getElementById('cTo').value=_cc.phone||'';setComposeType('sms',btns[0]);}
   else{document.getElementById('cTo').value=_cc.email||'';setComposeType('email',btns[1]);}
   document.getElementById('composeModal').classList.add('open');
+}
+
+// COMPOSE PHOTO PICKER — lets you attach a gallery photo to an individual message
+function openComposePhotoPicker(){
+  renderComposePhotoFilters();
+  renderComposePhotoGrid('');
+  document.getElementById('composePhotoPickerModal').classList.add('open');
+}
+function closeComposePhotoPicker(){ document.getElementById('composePhotoPickerModal').classList.remove('open'); }
+function renderComposePhotoFilters(){
+  const row=document.getElementById('cPhotoFilterRow');
+  row.innerHTML = `<div class="chip active" data-cat="" onclick="renderComposePhotoGrid('',this)">All</div>` +
+    GALLERY_CATEGORIES.map(cat=>`<div class="chip" data-cat="${cat.replace(/"/g,'&quot;')}" onclick="renderComposePhotoGrid('${cat.replace(/'/g,"\\'")}',this)">${cat}</div>`).join('');
+}
+function renderComposePhotoGrid(cat,chipEl){
+  if(chipEl){document.querySelectorAll('#cPhotoFilterRow .chip').forEach(c=>c.classList.remove('active'));chipEl.classList.add('active');}
+  const grid=document.getElementById('cPhotoPickerGrid');
+  const list = cat ? gallery.filter(g=>g.category===cat) : gallery;
+  if(list.length===0){ grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;padding:1.5rem;"><div class="empty-icon">🖼️</div><div class="empty-msg">No promo photos yet — add some in Tools → Promo Gallery.</div></div>`; return; }
+  grid.innerHTML = list.map(g=>`<img src="${g.dataUrl}" alt="${g.name}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid var(--sg-border);" onclick="selectComposePhoto('${g.id}')">`).join('');
+}
+function selectComposePhoto(id){
+  const photo=gallery.find(g=>g.id===id); if(!photo)return;
+  composeAttachedPhotoId=id;
+  document.getElementById('cPhotoPreviewImg').src=photo.dataUrl;
+  document.getElementById('cPhotoPreviewName').textContent=photo.name||'Photo attached';
+  document.getElementById('cPhotoPreviewRow').style.display='flex';
+  closeComposePhotoPicker();
+}
+function clearComposePhoto(){
+  composeAttachedPhotoId=null;
+  document.getElementById('cPhotoPreviewRow').style.display='none';
+  document.getElementById('cPhotoPreviewImg').src='';
 }
 function setComposeType(type,btn){
   composeType=type;
@@ -3384,13 +3459,39 @@ function handleSend(){
   msg=personalizeSingle(msg);
   subject=personalizeSingle(subject);
   if(!to){alert('Enter a recipient first.');return false;}
-  if(composeType==='sms'){let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;}
+  if(composeType==='sms'&&composeAttachedPhotoId){
+    // A phone's Messages app can't accept a pre-attached photo through a plain sms: link —
+    // that's a phone OS limit, not something a web app can get around. The closest real
+    // equivalent is the native Share Sheet: it hands your photo + message to Messages (or
+    // whatever app you pick) in one tap, you just confirm the recipient there since Share
+    // Sheet can't pre-fill "To" the way a sms: link can.
+    sendComposeWithPhoto(to,msg);
+  }
+  else if(composeType==='sms'){let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;}
   else{
     const url=buildEmailUrl(to,subject,msg);
     if(settings.emailClient==='gmail'){ window.open(url,'_blank'); }
     else{ window.location.href=url; }
   }
   closeCompose();return false;
+}
+async function sendComposeWithPhoto(to,msg){
+  const photo=gallery.find(g=>g.id===composeAttachedPhotoId);
+  if(!photo){ let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url; return; }
+  try{
+    const res=await fetch(photo.dataUrl);
+    const blob=await res.blob();
+    const file=new File([blob],photo.name||'promo.jpg',{type:blob.type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],text:msg||'',title:'Seymore Green'});
+    } else {
+      showToast('Photo attach isn\'t supported on this browser — sending the text, download the photo separately');
+      let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;
+    }
+  }catch(e){
+    showToast('Could not attach photo — sending text only','error');
+    let url=`sms:${cleanPhone(to)}`;if(msg)url+=`?body=${encodeURIComponent(msg)}`;window.location.href=url;
+  }
 }
 function closeCompose(){document.getElementById('composeModal').classList.remove('open');}
 
@@ -4100,12 +4201,12 @@ function closeBlastModal(){
 }
 
 // CLOSE ON BACKDROP
-['addModal','composeModal','settingsModal','toolsModal','galleryModal','importModal','templatesModal','blastModal','promoModal','couponModal'].forEach(id=>{
+['addModal','composeModal','composePhotoPickerModal','settingsModal','settingsPinModal','toolsModal','galleryModal','importModal','templatesModal','blastModal','promoModal','couponModal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 });
 
 // SETTINGS
-function openSettings(){
+function openSettingsPanel(){
   document.getElementById('sWebAppUrl').value=settings.webAppUrl||'';
   document.getElementById('sSheetName').value=settings.sheetName||'Contacts';
   document.getElementById('sPullMode').value=settings.pullMode||'merge';
@@ -4116,6 +4217,34 @@ function openSettings(){
   updateConnStatus(settings.webAppUrl?'connected':'idle');
   document.getElementById('settingsModal').classList.add('open');
 }
+// PIN GATE — Settings holds your Google Sheets Web App URL and sync config,
+// so it's locked behind a PIN. Everywhere else in the app still calls
+// openSettings() like before; this just checks the PIN first.
+const SETTINGS_PIN_HASH='c10b0c5f1c5a88b4bac296c0e6e2e14d097e5d3ff1f442115ba8b2527d51af06';
+async function sha256Hex(str){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function openSettings(){
+  document.getElementById('sPinInput').value='';
+  document.getElementById('sPinError').style.display='none';
+  document.getElementById('settingsPinModal').classList.add('open');
+  setTimeout(()=>document.getElementById('sPinInput').focus(),50);
+}
+function closeSettingsPin(){ document.getElementById('settingsPinModal').classList.remove('open'); }
+async function checkSettingsPin(){
+  const entered=document.getElementById('sPinInput').value.trim();
+  const hash=await sha256Hex(entered);
+  if(hash===SETTINGS_PIN_HASH){
+    closeSettingsPin();
+    openSettingsPanel();
+  } else {
+    document.getElementById('sPinError').style.display='block';
+    document.getElementById('sPinInput').value='';
+    document.getElementById('sPinInput').focus();
+  }
+}
+function settingsPinKeydown(e){ if(e.key==='Enter') checkSettingsPin(); }
 function closeSettings(){document.getElementById('settingsModal').classList.remove('open');}
 function saveSettings(){
   settings.webAppUrl=document.getElementById('sWebAppUrl').value.trim();

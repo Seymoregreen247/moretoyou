@@ -1,4 +1,4 @@
-const CACHE_NAME = 'moneyblast-v1';
+const CACHE_NAME = 'moneyblast-v2';
 const APP_SHELL = [
   './',
   './index.html',
